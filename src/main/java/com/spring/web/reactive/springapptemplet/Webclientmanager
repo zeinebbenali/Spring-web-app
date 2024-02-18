@@ -1,0 +1,64 @@
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProvider;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProviderBuilder;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultReactiveOAuth2AuthorizedClientManager;
+import org.springframework.web.reactive.function.client.WebClient;
+
+@Configuration
+public class WebClientOAuthConfig {
+
+    @Bean
+    public WebClient.Builder webClientBuilder(
+            @Qualifier("authorizedClientManager") ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+        
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector())
+                .filter(oauth2ExchangeFilterFunction(authorizedClientManager));
+    }
+
+    private ExchangeFilterFunction oauth2ExchangeFilterFunction(
+            ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+        return ExchangeFilterFunction.ofRequestProcessor(
+                clientRequest -> {
+                    // Use the authorizedClientManager to get the authorized client
+                    Mono<ReactiveOAuth2AuthorizedClient> authorizedClientMono =
+                            authorizedClientManager.authorize(
+                                    new OAuth2AuthorizeRequest(
+                                            OAuth2AuthorizeRequest.withClientRegistrationId("your-client-registration-id")
+                                                    .principal(Authentication::getPrincipal)
+                                                    .attributes(attributes -> {})
+                                    )
+                            );
+
+                    return authorizedClientMono.map(authorizedClient -> {
+                        // Set the OAuth 2.0 access token in the request header
+                        String accessTokenValue = authorizedClient.getAccessToken().getTokenValue();
+                        return clientRequest.headers(headers -> headers.setBearerAuth(accessTokenValue));
+                    });
+                });
+    }
+
+    @Bean
+    public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
+            ReactiveClientRegistrationRepository clientRegistrationRepository,
+            ReactiveOAuth2AuthorizedClientRepository authorizedClientRepository) {
+
+        ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
+                ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
+                        .authorizationCode()
+                        .refreshToken()
+                        .build();
+
+        DefaultReactiveOAuth2AuthorizedClientManager authorizedClientManager =
+                new DefaultReactiveOAuth2AuthorizedClientManager(
+                        clientRegistrationRepository, authorizedClientRepository);
+
+        authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+
+        return authorizedClientManager;
+    }
+}
