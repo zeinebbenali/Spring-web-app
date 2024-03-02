@@ -1,0 +1,21 @@
+RestTemplate restTemplate = new RestTemplate();
+restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor("username", "password"));
+
+HttpHost proxy = new HttpHost("proxy.example.com", 80);
+HttpClient httpClient = HttpClientBuilder.create()
+    .setRoutePlanner(new DefaultProxyRoutePlanner(proxy) {
+        @Override
+        public HttpHost determineProxy(HttpHost target, HttpRequest request, HttpContext context) throws HttpException {
+            if ("192.168.0.5".equals(target.getHostName())) {
+                return null; // No proxy for this host
+            }
+            return super.determineProxy(target, request, context);
+        }
+    }).build();
+
+RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory(httpClient));
+
+proxy.example.comSimpleClientHttpRequestFactory clientHttpReq = new SimpleClientHttpRequestFactory();
+Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("your.proxy.server", 80));
+clientHttpReq.setProxy(proxy);
+RestTemplate restTemplate = new RestTemplate(clientHttpReq);
