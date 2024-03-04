@@ -1,0 +1,33 @@
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
+
+public class RestClientConfig {
+
+    public static RestTemplate createRestTemplate(String proxyHost, int proxyPort, String proxyUsername,
+                                                  String proxyPassword, String secretKey) {
+
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+
+        // Set proxy configuration
+        if (proxyHost != null && proxyPort > 0) {
+            requestFactory.setProxyHost(proxyHost);
+            requestFactory.setProxyPort(proxyPort);
+        }
+
+        // Set proxy credentials
+        if (proxyUsername != null && proxyPassword != null) {
+            requestFactory.setProxyUsername(proxyUsername);
+            requestFactory.setProxyPassword(proxyPassword);
+        }
+
+        // Set trust all certificates
+        requestFactory.setTrustAll(true);
+
+        RestTemplate restTemplate = new RestTemplate(requestFactory);
+
+        // Include your secret key in the request headers or use it as needed
+        // restTemplate.getInterceptors().add(new YourCustomInterceptor(secretKey));
+
+        return restTemplate;
+    }
+}
