@@ -1,0 +1,53 @@
+SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+InetSocketAddress address = new InetSocketAddress("proxy.example.com", 8080); // Replace with your proxy address and port
+Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
+factory.setProxy(proxy);
+
+HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+CredentialsProvider credsProvider = new BasicCredentialsProvider();
+credsProvider.setCredentials(
+    new AuthScope("proxy.example.com", 8080), // Replace with your proxy address and port
+    new UsernamePasswordCredentials("proxyUser", "proxyPassword") // Replace with your proxy username and password
+);
+clientBuilder.setDefaultCredentialsProvider(credsProvider);
+HttpClient httpClient = clientBuilder.build();
+factory.setHttpClient(httpClient);
+
+RestTemplate restTemplate = new RestTemplate(factory);
+
+TrustManager[] trustAllCerts = new TrustManager[]{
+    new X509TrustManager() {
+        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+            return null;
+        }
+        public void checkClientTrusted(X509Certificate[] certs, String authType) {
+        }
+        public void checkServerTrusted(X509Certificate[] certs, String authType) {
+        }
+    }
+};
+
+SSLContext sslContext = SSLContext.getInstance("SSL");
+sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+CloseableHttpClient httpClient = HttpClients.custom()
+    .setSSLContext(sslContext)
+    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+    .build();
+
+HttpComponentsClientHttpRequestFactory customRequestFactory = new HttpComponentsClientHttpRequestFactory();
+customRequestFactory.setHttpClient(httpClient);
+
+restTemplate.setRequestFactory(customRequestFactory);
+
+HttpHeaders headers = new HttpHeaders();
+headers.set("Authorization", "Bearer your_secret_token_here"); // Replace with your actual token
+HttpEntity<String> entity = new HttpEntity<>(headers);
+
+// Use the entity with the headers for your requests
+ResponseEntity<String> response = restTemplate.exchange(
+    "url_of_the_REST_API",
+    HttpMethod.GET,
+    entity,
+    String.class
+);
