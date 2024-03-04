@@ -1,0 +1,37 @@
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
+
+import java.net.Authenticator;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
+
+public class RestClient {
+
+    public static void main(String[] args) {
+        // Set proxy information
+        String proxyHost = "your_proxy_host";
+        int proxyPort = 8080;
+        String username = "your_proxy_username";
+        String password = "your_proxy_password";
+
+        // Configure proxy
+        Proxy proxy = new Proxy(Proxy.Type.HTTP, new java.net.InetSocketAddress(proxyHost, proxyPort));
+
+        // Set proxy credentials using Authenticator
+        Authenticator.setDefault(new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(username, password.toCharArray());
+            }
+        });
+
+        // Create RestTemplate with proxy configuration
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setProxy(proxy);
+
+        RestTemplate restTemplate = new RestTemplate(requestFactory);
+
+        // Now you can use restTemplate for making HTTP requests with the configured proxy and credentials
+        // For example: restTemplate.getForObject("http://example.com/api/resource", String.class);
+    }
+}
