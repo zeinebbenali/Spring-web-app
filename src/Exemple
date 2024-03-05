@@ -1,0 +1,46 @@
+<!-- Contenu du modèle de rappel -->
+<p>Rappel pour notre événement, {{name}}!</p>
+<p>Date de l'événement : {{date}}</p>
+<!-- Ajoutez d'autres éléments selon vos besoins -->
+@Service
+public class EmailService {
+
+    @Autowired
+    private JavaMailSender javaMailSender;
+
+    @Value("classpath:templates/templates.json")
+    private Resource templatesResource;
+
+    public void sendEventEmail(String to, String eventType, Event event) {
+        try {
+            // Charger les modèles depuis le fichier JSON
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, Map<String, String>> templates = objectMapper.readValue(templatesResource.getInputStream(), new TypeReference<Map<String, Map<String, String>>>() {});
+
+            // Récupérer les détails du modèle pour le type d'événement donné
+            Map<String, String> templateDetails = templates.get(eventType);
+            String subject = templateDetails.get("subject");
+            String templateName = templateDetails.get("template");
+
+            // Charger le contenu du modèle HTML
+            ClassPathResource resource = new ClassPathResource("templates/" + templateName + ".html");
+            String emailContent = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+
+            // Remplacer les placeholders avec les données de l'événement
+            emailContent = emailContent.replace("{{name}}", event.getName())
+                                        .replace("{{date}}", event.getDate());
+            // Ajoutez d'autres remplacements selon vos besoins
+
+            // Envoyer l'e-mail
+            sendEmail(to, subject, emailContent);
+
+        } catch (IOException | MessagingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendEmail(String to, String subject, String content) throws MessagingException {
+        // Utilisez JavaMailSender pour envoyer l'e-mail (voir exemples précédents)
+        // ...
+    }
+}
