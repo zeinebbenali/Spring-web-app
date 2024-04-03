@@ -1,0 +1,21 @@
+name: Rename Workflow with Branch Name
+
+on:
+  push:
+    branches:
+      - '*'
+
+jobs:
+  rename_workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Workflow Name
+        run: echo "name: Workflow on ${GITHUB_REF#refs/heads/}" > .github/workflows/renamed_workflow.yml
+      - name: Copy Workflow Contents
+        run: cat .github/workflows/original_workflow.yml >> .github/workflows/renamed_workflow.yml
+      - name: Commit and Push Renamed Workflow
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Rename workflow to match branch name"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
