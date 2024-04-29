@@ -1,0 +1,43 @@
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .oauth2Client(oauth2 -> oauth2
+                .clientRegistrationRepository(clientRegistrationRepository())
+                .authorizedClientRepository(authorizedClientRepository())
+            )
+            .authorizeRequests(authorize -> authorize
+                .anyRequest().authenticated()
+            )
+            .formLogin();
+    }
+
+    @Bean
+    public ClientRegistrationRepository clientRegistrationRepository() {
+        return new InMemoryClientRegistrationRepository(
+            ClientRegistration.withRegistrationId("my-client")
+                .clientId("your-client-id")
+                .clientSecret("your-client-secret")
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .scope("openid", "profile")
+                .authorizationUri("https://your-auth-server.com/oauth/authorize")
+                .tokenUri("https://your-auth-server.com/oauth/token")
+                .userInfoUri("https://your-auth-server.com/userinfo")
+                .userNameAttributeName("name")
+                .clientName("My Client")
+                .build()
+        );
+    }
+
+    @Bean
+    public OAuth2AuthorizedClientRepository authorizedClientRepository(
+        ClientRegistrationRepository clientRegistrationRepository,
+        OAuth2AuthorizedClientService authorizedClientService
+    ) {
+        return new InMemoryOAuth2AuthorizedClientRepository(authorizedClientService);
+    }
+}
