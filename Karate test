@@ -1,0 +1,124 @@
+Feature: Get Token and Access Resource
+
+Background:
+  * def clientId = 'your_client_id' 
+  * def clientSecret = 'your_client_secret'
+
+Scenario: Get Token
+  Given url 'https://your-token-endpoint.com/token'
+  And form fields
+    client_id = clientId
+    client_secret = clientSecret
+    grant_type = 'client_credentials'
+  When method POST
+  Then status 200
+  * def authToken = response.access_token
+function fn() {
+  var config = {
+    headers: {
+      'Authorization': 'Bearer xyz123',
+      'X-Pre-Auth-Token': 'abc456'
+    }
+  };
+
+  return config;
+}
+Scenario:
+    Given path '/secured/endpoint'
+    And header Authorization = 'Bearer xyz123' 
+    And header X-Pre-Auth-Token = 'abc456'
+    When method get
+    Then status 200
+Scenario: Access Resource
+  Given url 'https://your-api-endpoint.com/resource'
+  And header Authorization = 'Bearer ' + authToken
+  When method GET
+  Then status 200
+Feature: Retry with Interval Example
+
+Scenario: Retry until condition is met
+    * configure retry = { count: 5, interval: 3000 }
+    Given url 'https://example.com/api'
+    And path 'resource'
+    And retry until responseStatus == 200 && response.id > 3
+    When method get
+    Then status 200
+
+Feature: Capture Void Method Result
+
+Scenario: Capture result of void method
+    * def myObject = Java.type('com.mypackage.MyClass')
+    * def result = karate.capture(myObject.voidMethod())
+    * match result.result == 'some value'
+Feature: Database Tests
+
+  Background:
+    * configure driverClassName = 'org.postgresql.Driver' 
+    * def dbUrl = karate.properties['databaseUrl']
+
+  Scenario: Test database
+    Given url dbUrl
+    When sql 'SELECT ...'
+    Then match response ...
+
+function fn() {
+  var config = { /* votre configuration ici */ }
+
+  karate.configure('connectOptions', {
+    headers: { /* vos en-têtes ici */ }
+  });
+
+  karate.configure('driverClassName', 'org.postgresql.Driver');
+  karate.configure('databaseUrl', 'jdbc:postgresql://localhost:5432/postgres');
+
+  karate.beforeAll(function() {
+    // Démarrer la base de données ici
+    // Par exemple avec Docker Compose :
+    var compose = read('docker-compose.yml');
+    compose.up();
+  });
+
+  return config;
+}
+
+module.exports = fn;
+
+<dependency>
+    <groupId>com.intuit.karate</groupId>
+    <artifactId>karate-apache</artifactId>
+    <version>1.4.1</version>
+    <scope>test</scope>
+</dependency>
+
+mvn test -Dtest=docker-compose.feature
+
+version: '3'
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d
+
+
+const constants = require('./constants.js');
+
+function fn() {
+  var config = {
+    baseUrl: constants.BASE_URL,
+    databaseUrl: constants.DATABASE_URL
+  }
+
+  return config;
+}
+
+module.exports = fn;
+
+
+module.exports = {
+  BASE_URL: 'http://localhost:8080/api/users',
+  DATABASE_URL: 'jdbc:postgresql://localhost:5432/postgres'
+}
