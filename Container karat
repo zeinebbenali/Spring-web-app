@@ -1,0 +1,66 @@
+import com.intuit.karate.KarateOptions;
+import com.intuit.karate.Results;
+import com.intuit.karate.Runner;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecutor;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+public class TestRunner {
+
+    @BeforeAll
+    static void setUp() {
+        // Start Docker Compose services
+        startDockerCompose();
+    }
+
+    private static void startDockerCompose() {
+        try {
+            CommandLine cmdLine = new CommandLine("docker-compose");
+            cmdLine.addArgument("up");
+            cmdLine.addArgument("-d"); // Run in detached mode
+
+            DefaultExecutor executor = new DefaultExecutor();
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            executor.setStreamHandler(new LogStreamHandler(outputStream));
+            int exitCode = executor.execute(cmdLine);
+
+            if (exitCode != 0) {
+                System.err.println("Failed to start Docker Compose services: " + outputStream.toString());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    void testParallel() {
+        Results results = Runner.path("classpath:examples")
+                .outputQaideReports(true)
+                .parallel(5);
+        // Your test assertions...
+    }
+}
+
+@AfterAll
+static void tearDown() {
+    // Stop Docker Compose services
+    stopDockerCompose();
+}
+
+private static void stopDockerCompose() {
+    try {
+        CommandLine cmdLine = new CommandLine("docker-compose");
+        cmdLine.addArgument("down");
+
+        DefaultExecutor executor = new DefaultExecutor();
+        int exitCode = executor.execute(cmdLine);
+
+        if (exitCode != 0) {
+            System.err.println("Failed to stop Docker Compose services");
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
