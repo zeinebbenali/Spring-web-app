@@ -1,0 +1,22 @@
+function() {
+    var env = karate.env; // get java system property 'karate.env'
+    karate.log('karate.env system property was:', env);
+    if (!env) {
+        env = 'dev'; // a intelligent default
+    }
+    var config = { // base config JSON
+        appUrl: 'https://myapi.com'
+    };
+    
+    // Start Docker Compose before tests
+    if (env === 'e2e') {
+        var composeFile = 'resources/compose/docker-compose.yml';
+        var command = 'docker-compose -f ' + composeFile + ' up -d';
+        karate.log('Running command:', command);
+        karate.exec(command);
+    }
+
+    // don't waste time waiting for a service to start!
+    karate.configure('connectTimeout', 5000);
+    return config;
+}
