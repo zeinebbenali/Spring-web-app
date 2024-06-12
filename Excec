@@ -1,0 +1,7 @@
+def command = karate.fork(['script.sh', 'arg1'])
+command.waitSync()
+karate.log('stdout:', command.sysOut) 
+karate.log('stderr:', command.sysErr)
+if (command.exitCode != 0) {
+  karate.fail('Script failed with exit code: ' + command.exitCode)
+}
