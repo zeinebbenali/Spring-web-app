@@ -1,0 +1,25 @@
+<build>
+    <plugins>
+        <plugin>
+            <groupId>com.dkanejs.maven.plugins</groupId>
+            <artifactId>docker-compose-maven-plugin</artifactId>
+            <version>1.0.1</version>
+            <executions>
+                <execution>
+                    <id>pre-integration-test</id>
+                    <phase>pre-integration-test</phase>
+                    <goals>
+                        <goal>up</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>post-integration-test</id>
+                    <phase>post-integration-test</phase>
+                    <goals>
+                        <goal>down</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
