@@ -1,0 +1,9 @@
+function fn() {
+  var KafkaUtils = Java.type('karate.KafkaUtils');
+
+  var composeFile = 'docker-compose.yml';
+          var command = 'docker-compose -f ' + composeFile + ' up -d';
+          karate.log('Running command:', command);
+          karate.exec(command);
+  return { kafka: new KafkaUtils('test-topic') };
+}
