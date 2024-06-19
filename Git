@@ -1,0 +1,35 @@
+name: Karate Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+        
+    - name: Run Karate Tests
+      run: mvn test -Dtest=KarateTests
+      
+    - name: Upload Karate Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: karate-report
+        path: target/karate-reports
+        
+    - name: Upload Karate Logs  
+      uses: actions/upload-artifact@v3
+      with:
+        name: karate-logs
+        path: target/karate.log
