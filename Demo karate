@@ -1,0 +1,71 @@
+import com.intuit.karate.junit5.Karate;
+
+class TestRunner {
+
+    @Karate.Test
+    Karate testAll() {
+        return Karate.run("classpath:com/demo/features")
+                       .relativeTo(getClass());
+    }
+}
+±++++++++++
+import com.intuit.karate.junit5.Karate;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+
+class ApiTest {
+    @BeforeAll
+    static void setUp() {
+        DockerHelper.startContainer();
+    }
+
+    @AfterAll
+    static void tearDown() {
+        DockerHelper.stopContainer();
+    }
+
+    @Karate.Test
+    Karate testAll() {
+        return Karate.run("classpath:features/api").relativeTo(getClass());
+    }
+}
+
++++++++
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.core.DockerClientBuilder;
+import com.github.dockerjava.core.command.PullImageResultCallback;
+
+public class DockerHelper {
+    private static final String IMAGE_NAME = "your-image-name";
+    private static final String CONTAINER_NAME = "api-container";
+
+    public static void startContainer() {
+        DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+
+        try {
+            dockerClient.pullImageCmd(IMAGE_NAME)
+                    .exec(new PullImageResultCallback())
+                    .awaitCompletion();
+
+            dockerClient.createContainerCmd(IMAGE_NAME)
+                    .withName(CONTAINER_NAME)
+                    .withExposedPorts(ExposedPort.tcp(8080))
+                    .exec();
+
+            dockerClient.startContainerCmd(CONTAINER_NAME).exec();
+        } finally {
+            dockerClient.close();
+        }
+    }
+
+    public static void stopContainer() {
+        DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+
+        try {
+            dockerClient.stopContainerCmd(CONTAINER_NAME).exec();
+            dockerClient.removeContainerCmd(CONTAINER_NAME).exec();
+        } finally {
+            dockerClient.close();
+        }
+    }
+}
