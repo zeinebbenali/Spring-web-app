@@ -1,0 +1,35 @@
+<dependencies>
+    <!-- Testcontainers dependencies -->
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers</artifactId>
+        <version>1.17.3</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>1.17.3</version>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+
+import org.testcontainers.containers.DockerComposeContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+
+import java.io.File;
+
+public class DockerHelper {
+    private static final DockerComposeContainer<?> dockerComposeContainer;
+
+    static {
+        dockerComposeContainer = new DockerComposeContainer<>(
+                new File("docker-compose.yml"))
+                .withExposedService("db", 5432, Wait.forListeningPort());
+        dockerComposeContainer.start();
+    }
+
+    public static void stopContainers() {
+        dockerComposeContainer.stop();
+    }
+}
