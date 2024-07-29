@@ -1,0 +1,38 @@
+@RestController
+@RequestMapping("/api")
+public class CsvController {
+
+    @Autowired
+    private CsvExportService csvExportService;
+
+    @GetMapping("/export-csv")
+    public void exportToCsv(HttpServletResponse response) throws IOException {
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=export.csv");
+        
+        csvExportService.exportToCsv(response.getWriter());
+    }
+}
+
+@Service
+public class CsvExportService {
+
+    @Autowired
+    private YourRepository repository;
+
+    public void exportToCsv(Writer writer) {
+        try (CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT)) {
+            csvPrinter.printRecord("Header1", "Header2", "Header3");
+            
+            repository.findAll().forEach(item -> {
+                try {
+                    csvPrinter.printRecord(item.getField1(), item.getField2(), item.getField3());
+                } catch (IOException e) {
+                    log.error("Error while writing CSV", e);
+                }
+            });
+        } catch (IOException e) {
+            log.error("Error while writing CSV", e);
+        }
+    }
+}
