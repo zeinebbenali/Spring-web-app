@@ -1,0 +1,25 @@
+public class ObjectComparator {
+    public static Map<String, Object> compareObjects(Object obj1, Object obj2, String... excludeFields) {
+        Map<String, Object> differences = new HashMap<>();
+        Set<String> excludeFieldSet = new HashSet<>(Arrays.asList(excludeFields));
+
+        ReflectionUtils.doWithFields(obj1.getClass(), field -> {
+            if (!excludeFieldSet.contains(field.getName())) {
+                field.setAccessible(true);
+                Object value1 = field.get(obj1);
+                Object value2 = field.get(obj2);
+                if (!Objects.equals(value1, value2)) {
+                    differences.put(field.getName(), value2);
+                }
+            }
+        });
+
+        return differences;
+    }
+}
+
+Class1 obj1 = new Class1("a", "b", "c", new Date(), new Date());
+Class1 obj2 = new Class1("a", "b", "d", new Date(), new Date());
+
+Map<String, Object> diff = ObjectComparator.compareObjects(obj1, obj2, "createdAt", "updatedAt");
+System.out.println(diff);
