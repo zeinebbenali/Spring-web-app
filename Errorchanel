@@ -1,0 +1,35 @@
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.ErrorMessage;
+
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+@SpringBootApplication
+public class EventPublisherApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(EventPublisherApplication.class, args);
+    }
+
+    @Bean
+    public Supplier<Message<String>> supplier() {
+        return () -> {
+            String payload = "Hello, World!";
+            System.out.println("Sending message: " + payload);
+            return MessageBuilder.withPayload(payload)
+                    .setHeader("key", "value") // Example of setting a header
+                    .build();
+        };
+    }
+
+    @Bean
+    public Consumer<ErrorMessage> errorHandler() {
+        return errorMessage -> {
+            System.err.println("Error occurred: " + errorMessage);
+            // Additional logic such as logging or sending alerts
+        };
+    }
+}
