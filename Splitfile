@@ -1,0 +1,17 @@
+@Bean
+public IntegrationFlow fileSplitByPositionFlow() {
+    return IntegrationFlows.from("inputChannel")
+        .split(fileMessage -> {
+            String content = new String((byte[]) fileMessage.getPayload()); // Convert file payload to String
+            List<String> parts = new ArrayList<>();
+            int position = 0;
+            int splitLength = 10; // Example: Split every 10 characters
+            while (position < content.length()) {
+                parts.add(content.substring(position, Math.min(position + splitLength, content.length())));
+                position += splitLength;
+            }
+            return parts;
+        })
+        .channel("outputChannel")
+        .get();
+}
