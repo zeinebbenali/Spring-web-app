@@ -1,0 +1,42 @@
+@Bean
+public IntegrationFlow mainFlow() {
+    return IntegrationFlows.from("inputChannel")
+        // Route to multiple recipients
+        .routeToRecipients(route -> route
+            .recipient("firstRecipientChannel") // First recipient flow
+            .recipientFlow("secondRecipientChannel", subFlow -> subFlow
+                // Step 1: Split by custom delimiter "{1:"
+                .split(payload -> splitByDelimiter(payload, "{1:"))
+                // Step 2: Write each part to a new file
+                .handle(Files.outboundAdapter(new File("/output-directory"))
+                    .fileNameGenerator(message -> "split_" + System.currentTimeMillis() + ".txt")
+                    .autoCreateDirectory(true))
+                // Step 3: Forward each file to another channel
+                .channel("fileProcessingChannel")
+            )
+        )
+        .get();
+}
+
+@Bean
+public IntegrationFlow fileProcessingFlow() {
+    return IntegrationFlows.from("fileProcessingChannel")
+        // Process the file payload (e.g., transform or log)
+        .transform(File.class, file -> {
+            System.out.println("Processing file: " + file.getName());
+            return "Processed file: " + file.getName();
+        })
+        .get();
+}
+
+// Custom splitter logic
+private List<String> splitByDelimiter(Object payload, String delimiter) {
+    if (payload instanceof String) {
+        String content = (String) payload;
+        return Arrays.stream(content.split("(?=" + Pattern.quote(delimiter) + ")"))
+                     .map(String::trim)
+                     .filter(part -> !part.isEmpty())
+                     .collect(Collectors.toList());
+    }
+    throw new IllegalArgumentException("Payload must be of type String");
+}
