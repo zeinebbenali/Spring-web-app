@@ -1,0 +1,32 @@
+@Bean
+public IntegrationFlow fileProcessingFlow() {
+    return IntegrationFlows.from(Files.inboundAdapter(new File("/input-directory"))
+            .patternFilter("*.txt"), e -> e.poller(Pollers.fixedDelay(5000)))
+        // Step 1: Transform file content to String
+        .transform(Transformers.fileToString())
+        // Step 2: Split the content by custom delimiter "{1:"
+        .split(payload -> splitByDelimiter(payload, "{1:"))
+        // Step 3: Write each split message to a new file
+        .handle(Files.outboundAdapter(new File("/output-directory"))
+                .fileNameGenerator(message -> "output_" + System.currentTimeMillis() + ".txt")
+                .autoCreateDirectory(true))
+        // Step 4: Pass the file as payload to the next transformer
+        .transform(File.class, file -> {
+            // Example transformation logic for the file (e.g., convert to another format)
+            System.out.println("Processing file: " + file.getName());
+            return "Processed file: " + file.getName();
+        })
+        .get();
+}
+
+// Custom splitter logic
+private List<String> splitByDelimiter(Object payload, String delimiter) {
+    if (payload instanceof String) {
+        String content = (String) payload;
+        return Arrays.stream(content.split("(?=" + Pattern.quote(delimiter) + ")"))
+                     .map(String::trim)
+                     .filter(part -> !part.isEmpty())
+                     .collect(Collectors.toList());
+    }
+    throw new IllegalArgumentException("Payload must be of type String");
+}
