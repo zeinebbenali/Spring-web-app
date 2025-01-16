@@ -1,0 +1,35 @@
+@Bean
+public IntegrationFlow fileProcessingFlow() {
+    return IntegrationFlows.from(Files.inboundAdapter(new File("/input-directory"))
+            .patternFilter("*.txt"), e -> e.poller(Pollers.fixedDelay(5000)))
+        .transform(Transformers.fileToString()) // Convert file content to String
+        .split(s -> s.delimiters(",")) // Split content by delimiter
+        .channel("outputChannel") // Send split messages to output channel
+        .get();
+}
+
+
+@Bean
+public IntegrationFlow fileProcessingFlow() {
+    return IntegrationFlows.from(Files.inboundAdapter(new File("/input-directory"))
+            .patternFilter("*.txt"), e -> e.poller(Pollers.fixedDelay(5000)))
+        .transform(Transformers.fileToString()) // Convert file content to String
+        .split(s -> s.delimiters(",")) // Split content by delimiter
+        .handle(message -> System.out.println("Processed message: " + message.getPayload())) // Log each message
+        .get();
+}
+
+
+@Bean
+public IntegrationFlow fileProcessingFlow() {
+    return IntegrationFlows.from(Files.inboundAdapter(new File("/input-directory"))
+            .patternFilter("*.txt"), e -> e.poller(Pollers.fixedDelay(5000)))
+        .transform(Transformers.fileToString()) // Convert file content to String
+        .split(s -> s.delimiters(",")) // Split content by delimiter
+        .enrich(enricherSpec -> enricherSpec
+            .header("fileName", "example-file.txt") // Add a custom header
+            .headerFunction("timestamp", m -> System.currentTimeMillis()) // Add timestamp dynamically
+        )
+        .handle(message -> System.out.println("Processed message: " + message))
+        .get();
+}
