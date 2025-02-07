@@ -1,0 +1,23 @@
+import org.springframework.cache.CacheManager;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Component
+public class CacheCleaner {
+
+    private final CacheManager cacheManager;
+
+    public CacheCleaner(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
+    @Scheduled(cron = "0 0 3 * * ?") // Tous les jours à 3h00
+    public void clearCaches() {
+        cacheManager.getCacheNames().forEach(name -> {
+            if (cacheManager.getCache(name) != null) {
+                cacheManager.getCache(name).clear();
+            }
+        });
+        System.out.println("Caches nettoyés !");
+    }
+}
