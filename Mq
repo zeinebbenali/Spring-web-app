@@ -1,0 +1,60 @@
+<dependencies>
+    <!-- Spring Boot Starter for ActiveMQ -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-activemq</artifactId>
+    </dependency>
+
+    <!-- ActiveMQ Client -->
+    <dependency>
+        <groupId>org.apache.activemq</groupId>
+        <artifactId>activemq-spring-boot-starter</artifactId>
+        <version>2.1.1</version>
+    </dependency>
+</dependencies>
+
+# ActiveMQ Broker URL
+spring.activemq.broker-url=tcp://localhost:61616
+spring.activemq.user=admin
+spring.activemq.password=admin
+spring.jms.template.default-destination=test.mtxx
+
+package com.example.activemqdemo.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ActiveMQSender {
+    
+    @Autowired
+    private JmsTemplate jmsTemplate;
+
+    private final String queueName = "test.mtxx";  // Queue name
+
+    public void sendMessage(String message) {
+        jmsTemplate.convertAndSend(queueName, message);
+        System.out.println("Sent message: " + message);
+    }
+}
+
+package com.example.activemqdemo.controller;
+
+import com.example.activemqdemo.service.ActiveMQSender;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/messages")
+public class MessageController {
+
+    @Autowired
+    private ActiveMQSender activeMQSender;
+
+    @PostMapping("/send")
+    public String sendMessage(@RequestParam String message) {
+        activeMQSender.sendMessage(message);
+        return "Message sent: " + message;
+    }
+}
