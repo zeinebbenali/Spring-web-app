@@ -1,0 +1,11 @@
+#!/bin/bash
+
+BROKER_URL="http://localhost:8161/api/message/test.mtxx"
+MESSAGE="Hello from Shell Script!"
+USERNAME="admin"
+PASSWORD="admin"
+
+curl -u $USERNAME:$PASSWORD -d "$MESSAGE" "$BROKER_URL?type=queue"
+
+
+0 0 * * * /path/to/your_script.sh >> /path/to/logfile.log 2>&1
