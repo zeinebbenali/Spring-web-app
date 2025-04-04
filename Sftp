@@ -1,0 +1,142 @@
+sftp.host=your-sftp-host.com
+sftp.port=22
+sftp.user=your-username
+sftp.privateKey=classpath:private_key.pem
+sftp.privateKeyPassphrase=your-passphrase
+sftp.remote.directory=/remote/directory/path
+
+
+package com.example.sftp;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.expression.common.LiteralExpression;
+import org.springframework.integration.annotation.Gateway;
+import org.springframework.integration.annotation.MessagingGateway;
+import org.springframework.integration.file.remote.handler.FileTransferringMessageHandler;
+import org.springframework.integration.file.remote.session.SessionFactory;
+import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
+import org.springframework.messaging.MessageHandler;
+
+import java.io.File;
+
+@Configuration
+public class SftpConfig {
+
+    @Value("${sftp.host}")
+    private String sftpHost;
+
+    @Value("${sftp.port}")
+    private int sftpPort;
+
+    @Value("${sftp.user}")
+    private String sftpUser;
+
+    @Value("${sftp.privateKey}")
+    private org.springframework.core.io.Resource sftpPrivateKey;
+
+    @Value("${sftp.privateKeyPassphrase}")
+    private String sftpPrivateKeyPassphrase;
+
+    @Value("${sftp.remote.directory}")
+    private String sftpRemoteDirectory;
+
+    /**
+     * Configure the SFTP session factory with private key and passphrase.
+     */
+    @Bean
+    public SessionFactory<com.jcraft.jsch.ChannelSftp> sftpSessionFactory() {
+        DefaultSftpSessionFactory factory = new DefaultSftpSessionFactory();
+        factory.setHost(sftpHost);
+        factory.setPort(sftpPort);
+        factory.setUser(sftpUser);
+        factory.setPrivateKey(sftpPrivateKey);
+        factory.setPrivateKeyPassphrase(sftpPrivateKeyPassphrase);
+        factory.setAllowUnknownKeys(true); // Optional for unknown keys
+        return factory;
+    }
+
+    /**
+     * Configure the message handler for uploading files.
+     */
+    @Bean
+    public MessageHandler sftpMessageHandler() {
+        FileTransferringMessageHandler<com.jcraft.jsch.ChannelSftp> handler =
+                new FileTransferringMessageHandler<>(sftpSessionFactory());
+        handler.setRemoteDirectoryExpression(new LiteralExpression(sftpRemoteDirectory));
+        handler.setFileNameGenerator(message -> {
+            if (message.getPayload() instanceof File) {
+                return ((File) message.getPayload()).getName();
+            }
+            throw new IllegalArgumentException("File expected as payload.");
+        });
+        return handler;
+    }
+
+    /**
+     * Define a Messaging Gateway for file uploads.
+     */
+    @MessagingGateway
+    public interface UploadGateway {
+        @Gateway(requestChannel = "toSftpChannel")
+        void upload(File file);
+    }
+
+}
+
+package com.example.sftp;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.io.File;
+
+@Service
+public class SftpService {
+
+    private final SftpConfig.UploadGateway uploadGateway;
+
+    @Autowired
+    public SftpService(SftpConfig.UploadGateway uploadGateway) {
+        this.uploadGateway = uploadGateway;
+    }
+
+    public void uploadFile(File file) {
+        uploadGateway.upload(file);
+        System.out.println("File uploaded successfully: " + file.getName());
+    }
+}
+
+package com.example.sftp;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+
+@RestController
+@RequestMapping("/api/sftp")
+public class SftpController {
+
+    private final SftpService sftpService;
+
+    @Autowired
+    public SftpController(SftpService sftpService) {
+        this.sftpService = sftpService;
+    }
+
+    @PostMapping("/upload")
+    public String uploadFile(@RequestParam("file") MultipartFile multipartFile) throws IOException {
+        // Convert MultipartFile to File
+        File file = new File(System.getProperty("java.io.tmpdir") + "/" + multipartFile.getOriginalFilename());
+        multipartFile.transferTo(file);
+
+        // Upload file via SFTP service
+        sftpService.uploadFile(file);
+
+        return "File uploaded successfully!";
+    }
+}
