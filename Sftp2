@@ -1,0 +1,63 @@
+package com.example.sftp;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.file.remote.handler.FileTransferringMessageHandler;
+import org.springframework.integration.file.remote.session.SessionFactory;
+import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
+import org.springframework.messaging.MessageHandler;
+
+@Configuration
+public class SftpConfig {
+
+    @Value("${sftp.host}")
+    private String sftpHost;
+
+    @Value("${sftp.port}")
+    private int sftpPort;
+
+    @Value("${sftp.user}")
+    private String sftpUser;
+
+    @Value("${sftp.privateKey}")
+    private String sftpPrivateKeyPath;
+
+    @Value("${sftp.privateKeyPassphrase}")
+    private String sftpPrivateKeyPassphrase;
+
+    @Value("${sftp.remote.directory}")
+    private String sftpRemoteDirectory;
+
+    /**
+     * Configure the SFTP session factory using Apache MINA SSHD.
+     */
+    @Bean
+    public SessionFactory<com.jcraft.jsch.ChannelSftp> sftpSessionFactory() {
+        DefaultSftpSessionFactory factory = new DefaultSftpSessionFactory(true);
+        factory.setHost(sftpHost);
+        factory.setPort(sftpPort);
+        factory.setUser(sftpUser);
+        factory.setPrivateKeyResource(new org.springframework.core.io.FileSystemResource(sftpPrivateKeyPath));
+        factory.setPrivateKeyPassphrase(sftpPrivateKeyPassphrase);
+        factory.setAllowUnknownKeys(true); // Optional for unknown host keys
+        return factory;
+    }
+
+    /**
+     * Configure the message handler for uploading files.
+     */
+    @Bean
+    public MessageHandler sftpMessageHandler() {
+        FileTransferringMessageHandler<com.jcraft.jsch.ChannelSftp> handler =
+                new FileTransferringMessageHandler<>(sftpSessionFactory());
+        handler.setRemoteDirectoryExpression(new org.springframework.expression.common.LiteralExpression(sftpRemoteDirectory));
+        handler.setFileNameGenerator(message -> {
+            if (message.getPayload() instanceof java.io.File) {
+                return ((java.io.File) message.getPayload()).getName();
+            }
+            throw new IllegalArgumentException("File expected as payload.");
+        });
+        return handler;
+    }
+}
