@@ -1,0 +1,119 @@
+package com.example.account.service;
+
+import com.example.account.model.AccountStatement;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.springframework.stereotype.Service;
+
+import java.io.*;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@Service
+public class AccountStatementExportService {
+
+    public ByteArrayOutputStream exportToZip(LocalDate valueDate, List<AccountStatement> statements) throws IOException {
+        Map<String, List<AccountStatement>> statementsByClient = statements.stream()
+                .filter(s -> s.valueDate().equals(valueDate))
+                .collect(Collectors.groupingBy(AccountStatement::clientId));
+
+        ByteArrayOutputStream zipBytes = new ByteArrayOutputStream();
+
+        try (ZipOutputStream zipOut = new ZipOutputStream(zipBytes)) {
+            for (var entry : statementsByClient.entrySet()) {
+                String clientId = entry.getKey();
+                List<AccountStatement> clientStatements = entry.getValue();
+
+                try (
+                    SXSSFWorkbook workbook = new SXSSFWorkbook();
+                    ByteArrayOutputStream xlsxBytes = new ByteArrayOutputStream()
+                ) {
+                    Sheet sheet = workbook.createSheet("Statements");
+                    createHeader(sheet);
+
+                    int rowIndex = 1;
+                    for (AccountStatement s : clientStatements) {
+                        Row row = sheet.createRow(rowIndex++);
+                        row.createCell(0).setCellValue(s.clientId());
+                        row.createCell(1).setCellValue(s.valueDate().toString());
+                        row.createCell(2).setCellValue(s.balance().doubleValue());
+                        row.createCell(3).setCellValue(s.currency());
+                    }
+
+                    workbook.write(xlsxBytes);
+
+                    zipOut.putNextEntry(new ZipEntry("statement_" + clientId + ".xlsx"));
+                    zipOut.write(xlsxBytes.toByteArray());
+                    zipOut.closeEntry();
+
+                    workbook.dispose(); // free memory
+                }
+            }
+        }
+
+        return zipBytes;
+    }
+
+    private void createHeader(Sheet sheet) {
+        Row header = sheet.createRow(0);
+        header.createCell(0).setCellValue("ClientId");
+        header.createCell(1).setCellValue("ValueDate");
+        header.createCell(2).setCellValue("Balance");
+        header.createCell(3).setCellValue("Currency");
+    }
+}
+
+package com.example.account.controller;
+
+import com.example.account.model.AccountStatement;
+import com.example.account.service.AccountStatementExportService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/statements")
+public class AccountStatementController {
+
+    private final AccountStatementExportService exportService;
+
+    public AccountStatementController(AccountStatementExportService exportService) {
+        this.exportService = exportService;
+    }
+
+    @GetMapping(value = "/export", produces = "application/zip")
+    public ResponseEntity<byte[]> exportStatementsZip(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate valueDate
+    ) throws IOException {
+        List<AccountStatement> statements = mockFetchAllStatements(); // Replace with DB call
+
+        ByteArrayOutputStream zipStream = exportService.exportToZip(valueDate, statements);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDisposition(ContentDisposition.attachment().filename("account_statements_" + valueDate + ".zip").build());
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(zipStream.toByteArray());
+    }
+
+    // Mocked data for testing
+    private List<AccountStatement> mockFetchAllStatements() {
+        return List.of(
+            new AccountStatement("clientA", LocalDate.now(), new BigDecimal("1234.56"), "USD"),
+            new AccountStatement("clientA", LocalDate.now(), new BigDecimal("789.00"), "USD"),
+            new AccountStatement("clientB", LocalDate.now(), new BigDecimal("222.22"), "EUR"),
+            new AccountStatement("clientC", LocalDate.of(2023, 12, 31), new BigDecimal("500.00"), "GBP")
+        );
+    }
+}
