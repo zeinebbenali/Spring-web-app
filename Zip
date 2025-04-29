@@ -1,0 +1,69 @@
+@Service
+public class AccountStatementExportService {
+
+    public ByteArrayOutputStream exportStatementsToZip(LocalDate valueDate, List<AccountStatement> statements) throws IOException {
+        Map<String, List<AccountStatement>> groupedByClient = statements.stream()
+                .filter(s -> s.valueDate().equals(valueDate))
+                .collect(Collectors.groupingBy(AccountStatement::clientId));
+
+        ByteArrayOutputStream zipOutputStream = new ByteArrayOutputStream();
+
+        try (ZipOutputStream zip = new ZipOutputStream(zipOutputStream, StandardCharsets.UTF_8)) {
+            for (var entry : groupedByClient.entrySet()) {
+                String clientId = entry.getKey();
+                List<AccountStatement> clientStatements = entry.getValue();
+
+                zip.putNextEntry(new ZipEntry("statement_" + clientId + ".csv"));
+
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zip, StandardCharsets.UTF_8))) {
+                    writer.write("ClientId,ValueDate,Balance,Currency\n");
+                    for (AccountStatement s : clientStatements) {
+                        writer.write(String.format("%s,%s,%s,%s\n",
+                                s.clientId(),
+                                s.valueDate(),
+                                s.balance(),
+                                s.currency()));
+                    }
+                    writer.flush(); // flush into ZIP
+                }
+
+                zip.closeEntry();
+            }
+        }
+
+        return zipOutputStream;
+    }
+}
+@RestController
+@RequestMapping("/api/statements")
+public class AccountStatementController {
+
+    private final AccountStatementExportService exportService;
+
+    public AccountStatementController(AccountStatementExportService exportService) {
+        this.exportService = exportService;
+    }
+
+    @GetMapping(value = "/download", produces = "application/zip")
+    public ResponseEntity<byte[]> downloadZip(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate valueDate) throws IOException {
+        // Simuler des données récupérées de la base
+        List<AccountStatement> allStatements = fetchStatementsFromDb(); // à implémenter
+
+        ByteArrayOutputStream zipBytes = exportService.exportStatementsToZip(valueDate, allStatements);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=statements_" + valueDate + ".zip");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(zipBytes.toByteArray());
+    }
+
+    private List<AccountStatement> fetchStatementsFromDb() {
+        // Implémentation mock pour exemple
+        return List.of(
+                new AccountStatement("clientA", LocalDate.now(), new BigDecimal("1000.00"), "USD"),
+                new AccountStatement("clientB", LocalDate.now(), new BigDecimal("2000.00"), "EUR")
+        );
+    }
+}
