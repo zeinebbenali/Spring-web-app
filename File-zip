@@ -1,0 +1,36 @@
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public class FileDownloadUtil {
+
+    public static void sendFiles(List<File> files, HttpServletResponse response) throws IOException {
+        if (files.size() == 1 && files.get(0).getName().endsWith(".xlsx")) {
+            File file = files.get(0);
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
+
+            try (OutputStream out = response.getOutputStream()) {
+                Files.copy(file.toPath(), out);
+            }
+        } else {
+            response.setContentType("application/zip");
+            response.setHeader("Content-Disposition", "attachment; filename=\"files.zip\"");
+
+            try (ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream())) {
+                for (File file : files) {
+                    try (InputStream fis = new FileInputStream(file)) {
+                        ZipEntry zipEntry = new ZipEntry(file.getName());
+                        zipOut.putNextEntry(zipEntry);
+
+                        fis.transferTo(zipOut);
+                        zipOut.closeEntry();
+                    }
+                }
+            }
+        }
+    }
+}
