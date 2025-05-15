@@ -1,0 +1,79 @@
+If you're using native queries (e.g. with Spring Data JPA), and you want to fetch data in batches (pagination) for each client efficiently — you can definitely manage that.
+
+
+---
+
+✅ 1. Native query with pagination (per client):
+
+Use the @Query annotation with nativeQuery = true, and pass client ID, offset, and limit:
+
+@Repository
+public interface MyDataRepository extends JpaRepository<MyEntity, Long> {
+
+    @Query(value = """
+        SELECT id, item, value
+        FROM my_table
+        WHERE client_id = :clientId
+        ORDER BY id
+        LIMIT :limit OFFSET :offset
+        """, nativeQuery = true)
+    List<Object[]> fetchClientDataBatch(
+        @Param("clientId") String clientId,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
+}
+
+
+---
+
+✅ 2. Usage in service code (batching per client):
+
+@Autowired
+private MyDataRepository repository;
+
+public void exportDataForClient(String clientId, Writer writer) throws IOException {
+    int offset = 0;
+    int pageSize = 1000;
+    List<Object[]> batch;
+
+    try (BufferedWriter csvWriter = new BufferedWriter(writer)) {
+        csvWriter.write("id,item,value");
+        csvWriter.newLine();
+
+        do {
+            batch = repository.fetchClientDataBatch(clientId, offset, pageSize);
+            for (Object[] row : batch) {
+                csvWriter.write(row[0] + "," + row[1] + "," + row[2]);
+                csvWriter.newLine();
+            }
+            offset += pageSize;
+        } while (!batch.isEmpty());
+    }
+}
+
+
+---
+
+Optional: Pass the Writer from a controller or file output:
+
+File file = new File("/data/" + clientId + ".csv");
+Writer writer = new FileWriter(file);
+exportDataForClient(clientId, writer);
+
+
+---
+
+Summary:
+
+Use native query with LIMIT/OFFSET to stream data in chunks.
+
+Avoid loading everything into memory.
+
+Write directly to file or stream per batch.
+
+This works with PostgreSQL, MySQL, etc. — but consider using keyset pagination for very large datasets (if performance becomes an issue).
+
+
+Let me know your DB type or if you're using Spring Boot — I can tailor this more!
+
