@@ -1,0 +1,5 @@
+public interface ProduitRepository extends JpaRepository<Produit, Long>, JpaSpecificationExecutor<Produit> {
+
+    @Query("SELECT new com.exemple.dto.ProduitDTO(p.nom, p.prix) FROM Produit p WHERE (:#{#spec} IS NULL OR :#{#spec.toPredicate(p)})")
+    Page<ProduitDTO> findAllBySpecification(Specification<Produit> spec, Pageable pageable);
+}
