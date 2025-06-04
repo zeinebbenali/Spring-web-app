@@ -1,0 +1,15 @@
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class FileMapper {
+    public static Map<String, Set<MyFile>> mapFiles(List<MyFile> files) {
+        return files.stream()
+            .collect(Collectors.groupingBy(
+                MyFile::getName,
+                Collectors.collectingAndThen(
+                    Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(f -> f.getFileId() + "|" + f.getType()))),
+                    HashSet::new
+                )
+            ));
+    }
+}
