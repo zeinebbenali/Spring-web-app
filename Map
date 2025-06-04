@@ -1,0 +1,20 @@
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class LimitEntryProcessor {
+
+    public static LinkedHashMap<String, Set<EntryLimit>> process(List<LimitEntry> inputList) {
+        return inputList.stream()
+            .collect(Collectors.groupingBy(
+                LimitEntry::getKey, // Replace with actual method to extract key (String)
+                LinkedHashMap::new, // Preserve insertion order
+                Collectors.collectingAndThen(
+                    Collectors.mapping(LimitEntry::getEntryLimit, Collectors.toCollection(() ->
+                        new TreeSet<>(Comparator.comparing(e -> e.getMessageId() + "|" + e.getMessageType()))
+                    )),
+                    HashSet::new // Final Set<EntryLimit> with uniqueness
+                )
+            ));
+    }
+}
