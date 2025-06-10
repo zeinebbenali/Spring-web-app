@@ -1,0 +1,15 @@
+public class RemoveXmlHeader {
+    public static void main(String[] args) {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                     "<root>\n" +
+                     "    <element>Valeur</element>\n" +
+                     "</root>";
+
+        // Supprimer la déclaration XML (en début de fichier uniquement)
+        String xmlSansDeclaration = xml.replaceFirst("^<\\?xml[^>]*\\?>\\s*", "");
+
+        // Affichage du résultat
+        System.out.println("XML sans déclaration :");
+        System.out.println(xmlSansDeclaration);
+    }
+}
