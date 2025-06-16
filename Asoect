@@ -1,0 +1,9 @@
+@Aspect
+public class LegacyInterceptor {
+
+    @Around("execution(* com.lib.LegacyClass.*(..))")
+    public Object replaceLegacy(ProceedingJoinPoint joinPoint) throws Throwable {
+        // Redirige vers la nouvelle classe
+        return new NewClass().methodEquivalent(joinPoint.getArgs());
+    }
+}
