@@ -1,0 +1,22 @@
+package org.codehaus.jackson.map;
+
+import com.fasterxml.jackson.databind.ObjectMapper as FasterObjectMapper;
+import java.io.IOException;
+
+public class ObjectMapper {
+    private final FasterObjectMapper delegate;
+
+    public ObjectMapper() {
+        this.delegate = new FasterObjectMapper();
+    }
+
+    public <T> T readValue(String content, Class<T> valueType) throws IOException {
+        return delegate.readValue(content, valueType);
+    }
+
+    public String writeValueAsString(Object value) throws IOException {
+        return delegate.writeValueAsString(value);
+    }
+
+    // Ajouter d'autres méthodes utilisées par Application A
+}
