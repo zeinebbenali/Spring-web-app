@@ -1,0 +1,18 @@
+import org.aopalliance.intercept.MethodInvocation;
+import org.springframework.expression.ExpressionParser;
+import org.springframework.security.access.expression.ExpressionUtils;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.expression.EvaluationContext;
+
+MethodSecurityExpressionHandler handler = new CustomMethodSecurityExpressionHandler();
+Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+// You will need to build a MethodInvocation for your context (see below)
+MethodInvocation invocation = ...; // can use Spring's ReflectiveMethodInvocation if needed
+
+EvaluationContext context = handler.createEvaluationContext(() -> authentication, invocation);
+ExpressionParser parser = handler.getExpressionParser();
+boolean allowed = ExpressionUtils.evaluateAsBoolean(
+    parser.parseExpression(yourSpELString), context
+);
