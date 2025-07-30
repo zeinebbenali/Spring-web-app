@@ -1,0 +1,73 @@
+package com.example.security;
+
+import jakarta.annotation.PostConstruct;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.aopalliance.intercept.MethodInvocation;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.springframework.aop.framework.ReflectiveMethodInvocation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.expression.Expression;
+import org.springframework.expression.EvaluationContext;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.expression.ExpressionUtils;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
+@Aspect
+@Component
+public class AuthorizeCheckAspect {
+
+    @Autowired
+    private CustomMethodSecurityExpressionHandler expressionHandler;
+
+    @Around("@annotation(com.example.security.AuthorizeCheck)")
+    public Object handleAuthorizeCheck(ProceedingJoinPoint joinPoint) throws Throwable {
+        // 1. Get the method and annotation
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        AuthorizeCheck annotation = method.getAnnotation(AuthorizeCheck.class);
+        if (annotation == null) {
+            return joinPoint.proceed();
+        }
+
+        // 2. Build dynamic SpEL expression: e.g. "hasAuthority('api-ilc:read') or hasAuthority('api-ilc:write')"
+        String exprString = Arrays.stream(annotation.value())
+                .map(perm -> "'api-ilc:" + perm + "'")
+                .map(auth -> "hasAuthority(" + auth + ")")
+                .collect(Collectors.joining(" or "));
+
+        // 3. Get Authentication
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            throw new AccessDeniedException("No authenticated user found.");
+        }
+
+        // 4. Create MethodInvocation for evaluation context
+        MethodInvocation methodInvocation = new ReflectiveMethodInvocation(
+                joinPoint.getThis(), method, joinPoint.getArgs(), joinPoint.getTarget().getClass(), method, null
+        );
+
+        // 5. Create evaluation context and parse expression
+        EvaluationContext context = expressionHandler.createEvaluationContext(() -> authentication, methodInvocation);
+        Expression expression = expressionHandler.getExpressionParser().parseExpression(exprString);
+
+        // 6. Evaluate the expression
+        boolean authorized = ExpressionUtils.evaluateAsBoolean(expression, context);
+
+        if (!authorized) {
+            throw new AccessDeniedException("Access denied by @AuthorizeCheck.");
+        }
+
+        // 7. Proceed to controller
+        return joinPoint.proceed();
+    }
+}
