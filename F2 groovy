@@ -1,0 +1,82 @@
+#!/usr/bin/env groovy
+import groovy.json.JsonOutput
+import java.text.SimpleDateFormat
+
+if (args.size() < 2) {
+    println "Usage: groovy compareFiles.groovy fichier1 fichier2"
+    System.exit(1)
+}
+
+// Function to convert your custom [[key:value,...],[...]] into valid JSON array
+def parseCustomFormatToJsonArray = { text ->
+    text = text.trim()
+    if (!text.startsWith("[") || !text.endsWith("]")) {
+        throw new IllegalArgumentException("File must start with [ and end with ]")
+    }
+
+    // Remove first and last [ ] to work on the inside
+    def inside = text.substring(1, text.length() - 1)
+
+    // Split each [ ... ] object
+    def rawObjects = inside.split(/\],\s*\[/)
+
+    def list = []
+    rawObjects.each { obj ->
+        obj = obj.replaceAll(/^\[|\]$/, "") // remove [ ] around each object
+        def map = [:]
+        obj.split(/,\s*/).each { pair ->
+            def parts = pair.split(/:/, 2)
+            def key = parts[0].trim()
+            def value = parts[1].trim()
+
+            // Ensure key has quotes for JSON compatibility
+            key = key.replaceAll(/"/, "")
+            
+            if (key.equalsIgnoreCase("status")) {
+                map["status"] = value.replaceAll(/"/, "") // remove old quotes if any
+                map["status"] = "SENT" // force SENT (string)
+            } else if (value.isNumber()) {
+                map[key] = value.toLong()
+            } else {
+                map[key] = value.replaceAll(/"/, "")
+            }
+        }
+        list << map
+    }
+    return list
+}
+
+// Read the two files
+def file1 = new File(args[0])
+def file2 = new File(args[1])
+
+def list1 = parseCustomFormatToJsonArray(file1.text)
+def list2 = parseCustomFormatToJsonArray(file2.text)
+
+// Extract actual_id lists
+def ids1 = list1*.actual_id
+def ids2 = list2*.actual_id
+
+// Find differences
+def diff1 = ids1 - ids2
+def diff2 = ids2 - ids1
+def allDiffs = (diff1 + diff2).unique()
+
+// Prepare output folder
+def dateStr = new SimpleDateFormat("yyyyMMdd").format(new Date())
+def outDir = new File("sql/result_set/${dateStr}")
+outDir.mkdirs()
+
+def outFile = new File(outDir, "difference.txt")
+
+if (allDiffs) {
+    outFile.text = allDiffs.join("\n")
+    println "Differences written to ${outFile.absolutePath}"
+} else {
+    outFile.text = ""
+    println "No differences found"
+}
+
+// Optional: Write back a proper JSON version of file1 with quotes and array
+def jsonOutput1 = JsonOutput.prettyPrint(JsonOutput.toJson(list1))
+new File(outDir, "file1_formatted.json").text = jsonOutput1
