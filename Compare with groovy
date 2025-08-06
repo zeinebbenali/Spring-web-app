@@ -1,0 +1,38 @@
+import groovy.json.JsonSlurper
+
+if (args.size() < 2) {
+    println "Usage: groovy compareFiles.groovy file1.txt file2.txt"
+    System.exit(1)
+}
+
+def fixToJson = { text ->
+    // Remplace Id par "Id", name par "name", ajoute quotes
+    text = text.replaceAll(/([A-Za-z]+):/, '"$1":')
+    // Transforme en JSON valide
+    return new JsonSlurper().parseText(text)
+}
+
+def file1 = new File(args[0]).text.trim()
+def file2 = new File(args[1]).text.trim()
+
+def data1 = fixToJson(file1)
+def data2 = fixToJson(file2)
+
+// Extraction des noms
+def names1 = data1.collect { it.name }
+def names2 = data2.collect { it.name }
+
+// Comparaison
+def diff1 = names1 - names2
+def diff2 = names2 - names1
+
+println "Noms fichier1: $names1"
+println "Noms fichier2: $names2"
+
+if (diff1 || diff2) {
+    println "Différences détectées :"
+    if (diff1) println "Présents dans file1 mais pas file2: $diff1"
+    if (diff2) println "Présents dans file2 mais pas file1: $diff2"
+} else {
+    println "Les deux fichiers ont les mêmes noms."
+}
