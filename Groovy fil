@@ -1,0 +1,54 @@
+import groovy.json.JsonSlurper
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+if (args.size() < 2) {
+    println "Usage: groovy compareFiles.groovy file1.txt file2.txt [date]"
+    System.exit(1)
+}
+
+// --- Récupération date ---
+def today = (args.size() >= 3) ? args[2] : LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+
+// --- Fonction pour transformer en JSON ---
+def fixToJson = { text ->
+    text = text.replaceAll(/([A-Za-z]+):/, '"$1":')
+    return new JsonSlurper().parseText(text)
+}
+
+// --- Lecture fichiers ---
+def file1 = new File(args[0]).text.trim()
+def file2 = new File(args[1]).text.trim()
+
+def data1 = fixToJson(file1)
+def data2 = fixToJson(file2)
+
+// --- Extraction des noms ---
+def names1 = data1.collect { it.name }
+def names2 = data2.collect { it.name }
+
+// --- Comparaison ---
+def diff1 = names1 - names2
+def diff2 = names2 - names1
+def allDiffs = (diff1 + diff2).unique()
+
+println "Noms fichier1: $names1"
+println "Noms fichier2: $names2"
+
+if (allDiffs) {
+    println "Différences détectées: $allDiffs"
+
+    // Création du dossier
+    def dirPath = "sql/result_set/${today}"
+    new File(dirPath).mkdirs()
+
+    // Écriture dans le fichier
+    def diffFile = new File("${dirPath}/difference.txt")
+    diffFile.text = allDiffs.join("\n")
+
+    println "Différences enregistrées dans ${diffFile.absolutePath}"
+    System.exit(1) // Retourne 1 pour signaler une différence
+} else {
+    println "Les deux fichiers ont les mêmes noms."
+    System.exit(0)
+}
