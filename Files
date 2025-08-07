@@ -1,0 +1,25 @@
+// Lire les deux fichiers
+def file1Content = new File('fichier1.txt').text
+def file2Content = new File('fichier2.txt').text
+
+// Parser le contenu en objets Groovy (List<Map>)
+def list1 = Eval.me(file1Content)
+def list2 = Eval.me(file2Content)
+
+// 1. Récupérer les actual_id avec status = "closed"
+def closedActualIds = list1.findAll { it.status == 'closed' }*.actual_id
+
+// 2. Récupérer tous les actual_id du fichier1
+def allActualIdsInFile1 = list1*.actual_id as Set
+
+// 3. Trouver les actual_id présents dans file2 mais absents dans file1
+def file2ActualIds = list2*.actual_id
+def newActualIds = file2ActualIds.findAll { !(it in allActualIdsInFile1) }
+
+// 4. Combiner le tout
+def result = (closedActualIds + newActualIds).unique()
+
+// 5. Sauvegarder dans un fichier de sortie
+new File('resultat.txt').text = result.toString()
+
+println "Résultat écrit dans 'resultat.txt' : $result"
