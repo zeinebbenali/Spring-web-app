@@ -1,0 +1,42 @@
+// Vérifie la présence des arguments
+if (args.length != 2) {
+    println "Usage: groovy script.groovy <fichier1> <fichier2>"
+    System.exit(1)
+}
+
+def fichier1Path = args[0]
+def fichier2Path = args[1]
+
+def file1 = new File(fichier1Path)
+def file2 = new File(fichier2Path)
+def output = new File("resultat.txt")
+
+if (!file1.exists() || !file2.exists()) {
+    println "Un ou les deux fichiers n'existent pas."
+    System.exit(1)
+}
+
+// Lecture et parsing des contenus
+def content1 = Eval.me(file1.text)
+def content2 = Eval.me(file2.text)
+
+def set1ActualIdsMap = [:] // actual_id → status
+content1.each { map ->
+    def actualId = map.actual_id
+    set1ActualIdsMap[actualId] = map.status
+}
+
+// 1. actual_id avec status: ERROR
+def errorIds = set1ActualIdsMap.findAll { k, v -> v == 'ERROR' }.keySet()
+
+// 2. actual_id présents dans fichier2 mais absents dans fichier1
+def set2Ids = content2.collect { it.actual_id }
+def missingIn1 = set2Ids.findAll { !(it in set1ActualIdsMap.keySet()) }
+
+// Résultat combiné
+def resultSet = (errorIds + missingIn1) as Set
+
+// Écriture dans le fichier de sortie
+output.text = resultSet.collect { "[actual_id:${it}]" }.join(",\n")
+
+println "Résultat enregistré dans resultat.txt"
