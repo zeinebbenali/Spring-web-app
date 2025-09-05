@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management  # management image includes plugins
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    command: >
+      bash -c "rabbitmq-plugins enable --offline rabbitmq_shovel rabbitmq_shovel_management &&
+               rabbitmq-server"
