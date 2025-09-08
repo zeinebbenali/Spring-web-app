@@ -1,0 +1,24 @@
+@Service
+public class DynamicDataSourceService {
+
+    private final ConnectionConfigRepository configRepository;
+    private final Map<String, DataSource> dataSourceCache = new ConcurrentHashMap<>();
+
+    public DynamicDataSourceService(ConnectionConfigRepository configRepository) {
+        this.configRepository = configRepository;
+    }
+
+    public DataSource getDataSource(String name) {
+        return dataSourceCache.computeIfAbsent(name, key -> {
+            ConnectionConfig config = configRepository.findByName(key)
+                    .orElseThrow(() -> new RuntimeException("No config found for: " + key));
+
+            return DataSourceBuilder.create()
+                    .driverClassName(config.getDriverClass())
+                    .url(config.getUrl())
+                    .username(config.getUsername())
+                    .password(config.getPassword())
+                    .build();
+        });
+    }
+}
