@@ -1,0 +1,22 @@
+@Configuration
+public class DataSourceConfig {
+
+    @Bean(name = "mainDataSource")
+    @Primary
+    @ConfigurationProperties("spring.datasource.main")
+    public DataSource mainDataSource() {
+        return DataSourceBuilder.create().build();
+    }
+
+    @Bean(name = "paymentDataSource")
+    @ConfigurationProperties("spring.datasource.payment")
+    public DataSource paymentDataSource() {
+        return DataSourceBuilder.create().build();
+    }
+
+    @Bean(name = "securitiesDataSource")
+    @ConfigurationProperties("spring.datasource.securities")
+    public DataSource securitiesDataSource() {
+        return DataSourceBuilder.create().build();
+    }
+}
