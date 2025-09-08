@@ -1,0 +1,22 @@
+@RestController
+@RequestMapping("/query")
+public class QueryController {
+
+    private final QueryExecutionService queryService;
+
+    public QueryController(QueryExecutionService queryService) {
+        this.queryService = queryService;
+    }
+
+    @PostMapping
+    public ResponseEntity<?> executeQuery(@RequestBody QueryRequest request) {
+        try {
+            List<Map<String, Object>> result =
+                    queryService.execute(request.getSchemaName(), request.getSqlQuery());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+}
