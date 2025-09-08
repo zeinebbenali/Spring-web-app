@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    main:
+      url: jdbc:postgresql://localhost:5432/maindb
+      username: main_user
+      password: main_pass
+      driver-class-name: org.postgresql.Driver
+
+    payment:
+      url: jdbc:postgresql://localhost:5432/paymentdb
+      username: user_payment
+      password: pass_payment
+      driver-class-name: org.postgresql.Driver
+
+    securities:
+      url: jdbc:postgresql://localhost:5432/securitiesdb
+      username: user_sec
+      password: pass_sec
+      driver-class-name: org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto: none
+spring.jpa.show-sql: true
