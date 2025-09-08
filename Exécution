@@ -1,0 +1,14 @@
+@Service
+public class QueryExecutionService {
+
+    private final DynamicDataSourceService dsService;
+
+    public QueryExecutionService(DynamicDataSourceService dsService) {
+        this.dsService = dsService;
+    }
+
+    public List<Map<String, Object>> execute(DatabaseType dbType, String sqlQuery) {
+        JdbcTemplate jdbcTemplate = dsService.getJdbcTemplate(dbType);
+        return jdbcTemplate.queryForList(sqlQuery);
+    }
+}
