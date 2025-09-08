@@ -1,0 +1,23 @@
+@Service
+public class DynamicDataSourceService {
+
+    private final Map<String, DataSource> dataSources = new HashMap<>();
+
+    public DynamicDataSourceService(
+            @Qualifier("mainDataSource") DataSource main,
+            @Qualifier("paymentDataSource") DataSource payment,
+            @Qualifier("securitiesDataSource") DataSource securities) {
+
+        dataSources.put("main", main);
+        dataSources.put("payment", payment);
+        dataSources.put("securities", securities);
+    }
+
+    public JdbcTemplate getJdbcTemplate(String schemaName) {
+        DataSource ds = dataSources.get(schemaName);
+        if (ds == null) {
+            throw new RuntimeException("Unknown schema: " + schemaName);
+        }
+        return new JdbcTemplate(ds);
+    }
+}
