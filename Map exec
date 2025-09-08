@@ -1,0 +1,23 @@
+@Service
+public class DynamicDataSourceService {
+
+    private final Map<DatabaseType, DataSource> dataSources = new EnumMap<>(DatabaseType.class);
+
+    public DynamicDataSourceService(
+            @Qualifier("mainDataSource") DataSource main,
+            @Qualifier("paymentDataSource") DataSource payment,
+            @Qualifier("securitiesDataSource") DataSource securities) {
+
+        dataSources.put(DatabaseType.MAIN, main);
+        dataSources.put(DatabaseType.PAYMENT, payment);
+        dataSources.put(DatabaseType.SECURITIES, securities);
+    }
+
+    public JdbcTemplate getJdbcTemplate(DatabaseType dbType) {
+        DataSource ds = dataSources.get(dbType);
+        if (ds == null) {
+            throw new IllegalArgumentException("Unknown database: " + dbType);
+        }
+        return new JdbcTemplate(ds);
+    }
+}
