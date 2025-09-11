@@ -1,0 +1,30 @@
+package com.example.demo.service;
+
+import com.example.demo.enums.DatabaseType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class DynamicJdbcTemplateService {
+
+    private final Map<DatabaseType, JdbcTemplate> jdbcTemplates;
+
+    public DynamicJdbcTemplateService(Map<DatabaseType, JdbcTemplate> jdbcTemplates) {
+        this.jdbcTemplates = jdbcTemplates;
+    }
+
+    public JdbcTemplate getJdbcTemplate(DatabaseType dbType) {
+        JdbcTemplate jt = jdbcTemplates.get(dbType);
+        if (jt == null) {
+            throw new IllegalArgumentException("Unknown database: " + dbType);
+        }
+        return jt;
+    }
+
+    public List<Map<String, Object>> runQuery(DatabaseType dbType, String sql) {
+        return getJdbcTemplate(dbType).queryForList(sql);
+    }
+}
