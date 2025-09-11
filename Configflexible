@@ -1,0 +1,63 @@
+package com.example.demo.config;
+
+import com.example.demo.enums.DatabaseType;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Configuration
+public class DataSourceConfig {
+
+    /**
+     * Properties for the default Spring datasource ("spring.datasource").
+     */
+    @Bean
+    @ConfigurationProperties("spring.datasource")
+    public DataSourceProperties mainDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
+    @Bean
+    public DataSource mainDataSource(DataSourceProperties mainDataSourceProperties) {
+        return mainDataSourceProperties.initializeDataSourceBuilder().build();
+    }
+
+    /**
+     * Properties for all dynamic datasources under "app.datasources".
+     */
+    @Bean
+    @ConfigurationProperties(prefix = "app.datasources")
+    public Map<DatabaseType, DataSourceProperties> extraDataSourceProperties() {
+        return new EnumMap<>(DatabaseType.class);
+    }
+
+    /**
+     * Build a map of JdbcTemplate including MAIN + extras.
+     */
+    @Bean
+    public Map<DatabaseType, JdbcTemplate> jdbcTemplateMap(
+            DataSource mainDataSource,
+            Map<DatabaseType, DataSourceProperties> extraProps) {
+
+        Map<DatabaseType, JdbcTemplate> map = new EnumMap<>(DatabaseType.class);
+
+        // Add the main datasource
+        map.put(DatabaseType.MAIN, new JdbcTemplate(mainDataSource));
+
+        // Add the extras
+        map.putAll(extraProps.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> new JdbcTemplate(e.getValue().initializeDataSourceBuilder().build())
+                )));
+
+        return map;
+    }
+}
