@@ -1,0 +1,72 @@
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
+import java.util.*;
+
+import com.socgen.ftsreceiver.model.HealthDocument;
+import com.socgen.ftsreceiver.model.Upload;
+
+public class FtsRestClient {
+
+    private final RestTemplate restTemplate;
+
+    public FtsRestClient(String baseUrl) {
+        this.restTemplate = new RestTemplateBuilder()
+                .rootUri(baseUrl)                 // 👉 baseUrl défini une fois pour toutes
+                .setConnectTimeout(Duration.ofSeconds(5))
+                .setReadTimeout(Duration.ofSeconds(10))
+                .build();
+    }
+
+    // ---- GET /health ----
+    public HealthDocument getHealth() {
+        return restTemplate.getForObject("/health", HealthDocument.class);
+    }
+
+    // ---- POST /uploads ----
+    public Upload createUpload(UUID producerId, String signature, String url, String filename) {
+        // Body JSON
+        Map<String, Object> body = new HashMap<>();
+        body.put("url", url);
+        if (filename != null) {
+            body.put("filename", filename);
+        }
+
+        // Headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+        // POST (pas besoin de concaténer le baseUrl, rootUri est déjà appliqué)
+        return restTemplate.exchange(
+                "/uploads?producer={producer}&signature={signature}",
+                HttpMethod.POST,
+                request,
+                Upload.class,
+                producerId.toString(),
+                signature
+        ).getBody();
+    }
+
+    // ---- Exemple d’utilisation combinée ----
+    public void callHealthThenUpload() {
+        HealthDocument health = getHealth();
+        if ("UP".equalsIgnoreCase(health.getStatus())) {
+            System.out.println("✅ Service is UP, proceeding with upload...");
+
+            Upload upload = createUpload(
+                    UUID.fromString("11111111-2222-3333-4444-555555555555"),
+                    "SHEEP5-yfVH7rj38gAm92E4V6bBKFy10Cmc...",
+                    "https://objs3parlow02.fr.world.socgen/yourbucket/foo?AWSAccessKeyId=...",
+                    "optional-file.txt"
+            );
+
+            System.out.println("🚀 Upload started, transferId=" + upload.getTransferId());
+        } else {
+            System.out.println("❌ Service not UP, status=" + health.getStatus());
+        }
+    }
+}
