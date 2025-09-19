@@ -1,0 +1,150 @@
+import java.util.List;
+import java.util.List;
+import java.util.UUID;
+
+public record Upload(
+    UUID transferId,
+    UUID fileId,
+    String filename
+) {}
+public record ErrorModel(
+    ErrorDetails error
+) {}
+
+public record ErrorDetails(
+    String message,
+    String code,
+    ContactModel contact,
+    String logUrl,
+    String traceId,
+    Integer statusCode,
+    List<InnerErrorModel> details
+) {}
+
+public record InnerErrorModel(
+    String about,
+    String message,
+    String errorId,
+    List<String> errorDetails
+) {}
+
+public record ContactModel(
+    String team,
+    String mail,
+    String docUrl,
+    String unityGroup,
+    String frontline,
+    String impulseGroup
+) {}
+public record VersionDocument(
+    String version,
+    String lib
+) {}
+public record HealthDocument(
+    String version,
+    String status,
+    String comment,
+    List<HealthBlock> modules,
+    List<HealthBlock> dependencies
+) {}
+
+public record HealthBlock(
+    String name,
+    String status,
+    String comment
+) {}
+
+public record HealthModule(
+    String name,
+    String description,
+    String status,
+    List<String> tags,
+    String rootcause
+) {}
+
+public record Health(
+    String description,
+    String status,
+    String comment,
+    String time,
+    String version,
+    List<HealthModule> modules
+) {}
+
+
+public class Main {
+    public static void main(String[] args) {
+        FtsRestClient client = new FtsRestClient("https://api.socgen.com/ve");
+        client.callHealthThenUpload();
+    }
+}
+
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
+import java.util.*;
+
+import com.socgen.ftsreceiver.model.HealthDocument;
+import com.socgen.ftsreceiver.model.Upload;
+
+public class FtsRestClient {
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final String baseUrl;
+
+    public FtsRestClient(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
+    // ---- GET /health ----
+    public HealthDocument getHealth() {
+        return restTemplate.getForObject(
+            baseUrl + "/health",
+            HealthDocument.class
+        );
+    }
+
+    // ---- POST /uploads ----
+    public Upload createUpload(UUID producerId, String signature, String url, String filename) {
+        // Body JSON
+        Map<String, Object> body = new HashMap<>();
+        body.put("url", url);
+        if (filename != null) {
+            body.put("filename", filename);
+        }
+
+        // Headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+        // POST avec query params
+        return restTemplate.exchange(
+            baseUrl + "/uploads?producer={producer}&signature={signature}",
+            HttpMethod.POST,
+            request,
+            Upload.class,
+            producerId.toString(),
+            signature
+        ).getBody();
+    }
+
+    // ---- Exemple d’enchaînement ----
+    public void callHealthThenUpload() {
+        HealthDocument health = getHealth();
+        if ("UP".equalsIgnoreCase(health.getStatus())) {
+            System.out.println("✅ Service is UP, proceeding with upload...");
+
+            Upload upload = createUpload(
+                UUID.fromString("11111111-2222-3333-4444-555555555555"), // Producer
+                "SHEEP5-yfVH7rj38gAm92E4V6bBKFy10Cmc...",                 // Signature
+                "https://objs3parlow02.fr.world.socgen/yourbucket/foo?AWSAccessKeyId=...", // URL
+                "optional-file.txt"                                      // Filename
+            );
+
+            System.out.println("🚀 Upload started, transferId=" + upload.getTransferId());
+        } else {
+            System.out.println("❌ Service not UP, status=" + health.getStatus());
+        }
+    }
+}
