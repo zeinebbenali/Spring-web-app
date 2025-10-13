@@ -1,0 +1,13 @@
+CREATE TABLE new_account_balance AS
+SELECT 
+  account_id,
+  pos_type,
+  value_date,
+  SUM(amount) AS amount
+FROM account_balance
+GROUP BY account_id, pos_type, value_date;
+
+TRUNCATE TABLE account_balance;
+INSERT INTO account_balance (account_id, pos_type, value_date, amount)
+SELECT account_id, pos_type, value_date, amount FROM new_account_balance;
+DROP TABLE new_account_balance;
