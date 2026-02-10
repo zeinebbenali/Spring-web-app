@@ -1,0 +1,19 @@
+String payload = veryBigString; // ton XML/JSON
+
+byte[] data = payload.getBytes(StandardCharsets.UTF_8);
+
+// Compression GZIP
+ByteArrayOutputStream baos = new ByteArrayOutputStream();
+try (GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
+    gzip.write(data);
+}
+byte[] compressed = baos.toByteArray();
+
+BytesMessage msg = session.createBytesMessage();
+msg.writeBytes(compressed);
+
+// Indiquer au consumer comment lire
+msg.setStringProperty("Content-Encoding", "gzip");
+msg.setStringProperty("Content-Type", "text/plain; charset=utf-8");
+
+producer.send(msg);
